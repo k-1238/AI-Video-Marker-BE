@@ -53,6 +53,9 @@ async def generate_timestamp_from_audio(audios: List[str]):
     model = whisper.load_model("base")
     transcriptions = []
     for audio_file in audios:
+        if not os.path.exists(audio_file):
+            print(f"File not found! {audio_file}")
+            raise FileNotFoundError(f"The file {audio_file} does not exist.")
         result = model.transcribe(audio_file, word_timestamps=True)
         transcription = { "file": audio_file, "text": result["text"], "segments": result["segments"] }
         transcriptions.append(transcription)
