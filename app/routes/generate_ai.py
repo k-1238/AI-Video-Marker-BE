@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 @router.post("")
-async def generate_ai(request: Request, type: str = Form("image"), prompt_text: str = Form(""), array_text: str = Form(""), duration_total: int = Form(...), duration_per_scene: int = Form(...), orientation: str = Form(...), font_size: int = Form(...), font_color: str = Form(...), transition: str = Form(...)):
+async def generate_ai(request: Request, type: str = Form("image"), voice: str=Form(""), prompt_text: str = Form(""), array_text: str = Form(""), duration_total: int = Form(...), duration_per_scene: int = Form(...), orientation: str = Form(...), font_size: int = Form(...), font_color: str = Form(...), transition: str = Form(...)):
     """
     prompt_text => Text Prompt
     duration => Video Duration In Second
@@ -79,7 +79,7 @@ async def generate_ai(request: Request, type: str = Form("image"), prompt_text: 
             image_path = await generate_video.generate_images_from_scenes(each_text_scene, job_id_key, orientation)
             all_image_video_path.append(image_path)
     # Generate Audio
-    all_audio_path = (await text_to_speech.generate_text_to_speech_audio(all_text_scene))["data"]
+    all_audio_path = (await text_to_speech.generate_text_to_speech_audio(all_text_scene, voice))["data"]
     # Generate Audio Text Transcribe
     all_scene_text_transcription = (await text_to_speech.generate_timestamp_from_audio(all_audio_path))["data"]
     """
@@ -130,18 +130,18 @@ async def generate_ai(request: Request, type: str = Form("image"), prompt_text: 
                     clips[indexClip + 1] = clips[indexClip + 1].with_start((start_duration_position + contentClip.duration) - 1).with_effects([vfx.CrossFadeIn(1)])
                     start_duration_position = (start_duration_position + contentClip.duration) - 1
                 else:
-                    clips[indexClip] = contentClip.with_end(((indexClip + 1) * duration_per_scene) + 1)
-                    clips[indexClip + 1] = clips[indexClip + 1].with_start(((indexClip + 1) * duration_per_scene)).with_effects([vfx.CrossFadeIn(1)])
+                    clips[indexClip] = contentClip.with_end(((indexClip + 1) * contentClip.duration))
+                    clips[indexClip + 1] = clips[indexClip + 1].with_start(((indexClip + 1) * contentClip.duration) - 1).with_effects([vfx.CrossFadeIn(1)])
     elif (transition == "slide"):
         for indexClip, contentClip in enumerate(clips):
             if (indexClip < len(clips) - 1):
                 if type == "video":
-                    clips[indexClip] = contentClip.with_end(start_duration_position + contentClip.duration)
+                    clips[indexClip] = contentClip.with_end(start_duration_position + contentClip.duration + 1)
                     clips[indexClip + 1] = clips[indexClip + 1].with_start((start_duration_position + contentClip.duration) - 1).with_effects([vfx.SlideIn(1, "left")])
                     start_duration_position = (start_duration_position + contentClip.duration) - 1
                 else:
-                    clips[indexClip] = contentClip.with_end(((indexClip + 1) * duration_per_scene) + 1)
-                    clips[indexClip + 1] = clips[indexClip + 1].with_start(((indexClip + 1) * duration_per_scene)).with_effects([vfx.SlideIn(1, "left")])
+                    clips[indexClip] = contentClip.with_end(((indexClip + 1) * contentClip.duration))
+                    clips[indexClip + 1] = clips[indexClip + 1].with_start(((indexClip + 1) * contentClip.duration) - 1).with_effects([vfx.SlideIn(1, "left")])
     else:
         for indexClip, contentClip in enumerate(clips):
             if (indexClip < len(clips) - 1):
@@ -152,6 +152,7 @@ async def generate_ai(request: Request, type: str = Form("image"), prompt_text: 
                 else:
                     clips[indexClip] = contentClip.with_end(((indexClip + 1) * duration_per_scene))
                     clips[indexClip + 1] = clips[indexClip + 1].with_start(((indexClip + 1) * duration_per_scene))
+
     final_clip = CompositeVideoClip(clips)
     current_time = int(time() * 1000)
     temp_dir = "temp_videos"
@@ -162,4 +163,3 @@ async def generate_ai(request: Request, type: str = Form("image"), prompt_text: 
         clip.close()
     final_clip.close()
     return { "data": f"{str(request.base_url).rstrip('/')}/public/{current_time}-final_concatenated_output.mp4" }
-    return FileResponse(final_output_path, media_type="video/mp4", filename="concatenated_output.mp4")
