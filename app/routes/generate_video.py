@@ -95,6 +95,70 @@ async def generate_scene_descriptions(prompt: str, num_scenes: int = NUM_SCENES,
 #         logger.error(f"Image generation failed: {e}")
 #         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
+async def acceded_character(scene:str) -> str:
+    response = openai.chat.completions.create(
+        model="gpt-4o-mini",
+        messages= [
+            {"role": "system", "content": [{"type": "text", "text": "You will be provided with a main text, and your task is to extract a keyword from it. This value may exceed in below 20 characters."}]},
+            {"role": "user", "content": [{"type": "text", "text": f"{scene}"}]}
+        ],
+    )
+    return { 'data': response.choices[0].message.content or "" }
+
+# @router.post("/generate-image")
+# async def generate_images_from_scenes(scene: str, job_id: str, orientation: str = "portrait") -> str:
+#     """
+#     Generate images using DALL-E from scene descriptions.
+#     Orientation can be 'portrait' or 'landscape'.
+#     """
+#     try:
+#         # Determine image size based on orientation
+#         if orientation.lower() == "portrait":
+#             image_size = PORTRAIT_IMAGE_SIZE
+#         elif orientation.lower() == "landscape":
+#             image_size = LANDSCAPE_IMAGE_SIZE
+#         elif orientation.lower() == "square":
+#             image_size = DALLE_IMAGE_SIZE
+#         else:
+#             raise HTTPException(
+#                 status_code=400, 
+#                 detail="Invalid orientation. Please use 'portrait' or 'landscape'."
+#             )
+
+#         # Generate the image with DALL-E
+#         response = openai.images.generate(
+#             model="dall-e-3",
+#             prompt=scene,
+#             n=1,
+#             size=image_size,
+#             quality="standard"
+#         )
+#         image_url = response.data[0].url
+#         image_path = f"temp_images/{job_id}_scene.png"
+#         os.makedirs(os.path.dirname(image_path), exist_ok=True)
+
+#         # Handling image download with retries and timeout
+#         try:
+#             img_response = requests.get(image_url, timeout=10)
+#             img_response.raise_for_status()  # Check for successful response
+#             with open(image_path, "wb") as f:
+#                 f.write(img_response.content)
+
+#             # Success log after image is saved
+#             logger.info(f"Image successfully generated and saved at {image_path}")
+#             print(f"Image successfully generated and saved at {image_path}")  # Optionally print to the console
+
+#         except (RequestException, HTTPError, Timeout) as e:
+#             logger.error(f"Failed to download image: {e}")
+#             raise HTTPException(status_code=500, detail=f"Failed to download image: {str(e)}")
+
+#         return image_path  # Return the path to the saved image
+
+#     except Exception as e:
+#         logger.error(f"Image generation failed: {e}")
+#         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
+
+
 @router.post("/generate-image")
 async def generate_images_from_scenes(scene: str, job_id: str, orientation: str = "portrait") -> str:
     """
@@ -116,33 +180,50 @@ async def generate_images_from_scenes(scene: str, job_id: str, orientation: str 
             )
 
         # Generate the image with DALL-E
-        response = openai.images.generate(
-            model="dall-e-3",
-            prompt=scene,
-            n=1,
-            size=image_size,
-            quality="standard"
-        )
-        image_url = response.data[0].url
-        image_path = f"temp_images/{job_id}_scene.png"
-        os.makedirs(os.path.dirname(image_path), exist_ok=True)
+        # response = openai.images.generate(
+        #     model="dall-e-3",
+        #     prompt=scene,
+        #     n=1,
+        #     size=image_size,
+        #     quality="standard"
+        # ))
+        # Generate the image with Pixabay
+        summarize_scene = await acceded_character(scene)
+        fetching_url = f"https://pixabay.com/api/?key={os.getenv('PIXABAY_API_KEY')}&q={summarize_scene['data']}&orientation={image_size}"
 
-        # Handling image download with retries and timeout
-        try:
-            img_response = requests.get(image_url, timeout=10)
-            img_response.raise_for_status()  # Check for successful response
-            with open(image_path, "wb") as f:
-                f.write(img_response.content)
+        # Fetch the data from Pixabay API
+        response = requests.get(fetching_url)
+        data = response.json()
+        if "hits" in data and len(data["hits"]) > 0:
+            first_item = next(iter(data["hits"]), None)  # Get the first item safely
+            if first_item:  # Ensure it's not None
+                image_url = first_item.get("webformatURL")
+                print("image_url: ", image_url)
+                image_path = f"temp_images/{job_id}_scene.png"
+                os.makedirs(os.path.dirname(image_path), exist_ok=True)
 
-            # Success log after image is saved
-            logger.info(f"Image successfully generated and saved at {image_path}")
-            print(f"Image successfully generated and saved at {image_path}")  # Optionally print to the console
+                # Handling image download with retries and timeout
+                try:
+                    img_response = requests.get(image_url, timeout=10)
+                    img_response.raise_for_status()  # Check for successful response
+                    with open(image_path, "wb") as f:
+                        f.write(img_response.content)
 
-        except (RequestException, HTTPError, Timeout) as e:
-            logger.error(f"Failed to download image: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to download image: {str(e)}")
+                    # Success log after image is saved
+                    logger.info(f"Image successfully generated and saved at {image_path}")
+                    print(f"Image successfully generated and saved at {image_path}")  # Optionally print to the console
 
-        return image_path  # Return the path to the saved image
+                except (RequestException, HTTPError, Timeout) as e:
+                    logger.error(f"Failed to download image: {e}")
+                    raise HTTPException(status_code=500, detail=f"Failed to download image: {str(e)}")
+
+                return image_path  # Return the path to the saved image
+
+        else:
+            # If no images were found, log an error and raise an exception
+            logger.error("No image found for the given scene.")
+            raise HTTPException(status_code=500, detail="No image found for the given scene.")
+
 
     except Exception as e:
         logger.error(f"Image generation failed: {e}")
