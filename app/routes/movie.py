@@ -123,7 +123,7 @@ async def combine_video_and_audio(target_width: int, target_height: int,type: st
     for each_image_video_path_index, each_image_video_path in enumerate(all_image_video_path):
         image_video_clip = VideoFileClip(each_image_video_path) if type == "video" else ImageClip(each_image_video_path)
         audio_clip = AudioFileClip(all_audio_path[each_image_video_path_index])
-        image_video_clip = image_video_clip.with_duration(max(image_video_clip.duration, audio_clip.duration + 3) if type == "video" else duration_per_scene + 1)
+        image_video_clip = image_video_clip.with_duration(max(image_video_clip.duration, audio_clip.duration + 3) if type == "video" else audio_clip.duration + 3)
         image_video_clip = image_video_clip.with_audio(audio_clip)
         scale_factor = max(target_width / image_video_clip.w, target_height / image_video_clip.h)
         image_video_clip = image_video_clip.resized(scale_factor)
