@@ -198,7 +198,6 @@ async def generate_images_from_scenes(scene: str, job_id: str, orientation: str 
             first_item = next(iter(data["hits"]), None)  # Get the first item safely
             if first_item:  # Ensure it's not None
                 image_url = first_item.get("webformatURL")
-                print("image_url: ", image_url)
                 image_path = f"temp_images/{job_id}_scene.png"
                 os.makedirs(os.path.dirname(image_path), exist_ok=True)
 
@@ -223,8 +222,6 @@ async def generate_images_from_scenes(scene: str, job_id: str, orientation: str 
             # If no images were found, log an error and raise an exception
             logger.error("No image found for the given scene.")
             raise HTTPException(status_code=500, detail="No image found for the given scene.")
-
-
     except Exception as e:
         logger.error(f"Image generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")

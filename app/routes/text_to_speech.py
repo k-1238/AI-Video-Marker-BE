@@ -54,10 +54,10 @@ async def generate_text_to_speech_audio(texts: List[str], voice: str):
                 f"{base_url}/speech",
                 json={
                     "model": "kokoro",  
-                    "input": text,  # Dynamically change the input text
-                    "voice": voice,  # Cycle through voices if there are multiple
-                    "response_format": "mp3",  # Can be wav, opus, etc.
-                    "speed": 1.0  # Modify speed if necessary
+                    "input": text,
+                    "voice": voice,
+                    "response_format": "mp3",
+                    "speed": 1.0
                 }
             )
             response.raise_for_status()  # Ensure the request was successful

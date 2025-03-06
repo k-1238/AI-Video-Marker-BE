@@ -1,7 +1,7 @@
 import os
 from fastapi import APIRouter, UploadFile, File, Form
 from fastapi.responses import FileResponse
-from moviepy import VideoFileClip, concatenate_videoclips, TextClip, CompositeVideoClip, ImageClip, AudioFileClip
+from moviepy import VideoFileClip, concatenate_videoclips, TextClip, CompositeVideoClip, ImageClip, AudioFileClip, vfx
 from moviepy.video.fx import CrossFadeIn
 from PIL import Image, ImageDraw, ImageFont
 from time import time
@@ -123,10 +123,11 @@ async def combine_video_and_audio(target_width: int, target_height: int,type: st
     for each_image_video_path_index, each_image_video_path in enumerate(all_image_video_path):
         image_video_clip = VideoFileClip(each_image_video_path) if type == "video" else ImageClip(each_image_video_path)
         audio_clip = AudioFileClip(all_audio_path[each_image_video_path_index])
-        image_video_clip = image_video_clip.with_duration(max(image_video_clip.duration, audio_clip.duration + 3) if type == "video" else audio_clip.duration + 3)
+        image_video_clip = image_video_clip.with_duration(max(audio_clip.duration) if type == "video" else audio_clip.duration)
         image_video_clip = image_video_clip.with_audio(audio_clip)
         scale_factor = max(target_width / image_video_clip.w, target_height / image_video_clip.h)
         image_video_clip = image_video_clip.resized(scale_factor)
+        image_video_clip = image_video_clip.resized(lambda t: 1 + 0.02 * t)
         image_video_clip = image_video_clip.cropped(x_center=image_video_clip.w // 2, y_center=image_video_clip.h // 2, width=target_width, height=target_height)
         all_text_clip = []
         all_text_background_clip = []
@@ -135,7 +136,7 @@ async def combine_video_and_audio(target_width: int, target_height: int,type: st
             end_time = transcribe["end"]
             text_segmented = transcribe["text"]
             text_overlay = TextClip(font=os.path.join(os.getcwd(), "src", "fonts", "TypeLightSans-KV84p.otf"), text=text_segmented, font_size=font_size, size=(380, None), color=font_color, method="caption", text_align="center")
-            text_overlay = text_overlay.with_position(("center", image_video_clip.size[1] - text_overlay.size[1] - 40 + 10))
+            text_overlay = text_overlay.with_position(("center", image_video_clip.size[1] - text_overlay.size[1] - 40 + 15))
             text_overlay = text_overlay.with_start(start_time)
             text_overlay = text_overlay.with_end(end_time)
             all_text_clip.append(text_overlay)
