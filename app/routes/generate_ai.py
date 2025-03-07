@@ -47,7 +47,6 @@ async def get_pixabay_image(query, each_text_scene, job_id_key):
             for i, img in enumerate(images_to_use):
                 if i < len(images_to_use):  # Only process if there's an image for the sentence
                     image_url = img.get("webformatURL")
-                    print("image_url: ", image_url)
                     if image_url:
                         image_path = f"temp_images/{current_time}-{job_id_key}-Sentence-{i + 1}.png"
                         os.makedirs(os.path.dirname(image_path), exist_ok=True)
@@ -107,6 +106,7 @@ async def generate_ai(request: Request, type: str = Form("image"), voice: str=Fo
     # Get Image Or Video From Each Item Of Text Scene
     clips = []
     for each_text_scene_index, each_text_scene in enumerate(all_text_scene):
+        all_audio_path = []
         if type == "video":
             print('this run')
             all_image_video_path = []
@@ -181,7 +181,7 @@ async def generate_ai(request: Request, type: str = Form("image"), voice: str=Fo
             """
         # Generate Video Each Scene
         all_video_path = (await movie.combine_video_and_audio(target_width=1920, target_height=1080, type=type, duration_per_scene=duration_per_scene, total_scene=total_scene, all_image_video_path=all_image_video_path, all_audio_path=all_audio_path,all_scene_text_transcription=all_scene_text_transcription, font_size=font_size, font_color=font_color))
-        scene_clips = [VideoFileClip(f).with_effects([vfx.CrossFadeIn(1), vfx.FadeOut(0.5)]) for f in all_video_path]  # Convert each file to a clip
+        scene_clips = [VideoFileClip(f).with_effects([vfx.CrossFadeIn(0.5), vfx.FadeOut(0.25)]) for f in all_video_path]  # Convert each file to a clip
         clips.extend(scene_clips)  # Store clips properly
     final_clip = concatenate_videoclips(clips, method="compose")
     # final_clip = CompositeVideoClip(clips)

@@ -99,7 +99,7 @@ async def acceded_character(scene:str) -> str:
     response = openai.chat.completions.create(
         model="gpt-4o-mini",
         messages= [
-            {"role": "system", "content": [{"type": "text", "text": "You will be provided with a main text, and your task is to extract a keyword from it. This value may exceed in below 20 characters."}]},
+            {"role": "system", "content": [{"type": "text", "text": "You are an AI that extracts the main text from scene descriptions for image search. The main text may exceed in below 30 characters."}]},
             {"role": "user", "content": [{"type": "text", "text": f"{scene}"}]}
         ],
     )
